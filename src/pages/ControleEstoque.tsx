@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { loadModuleData, saveModuleData, uploadFile } from "../services/supabasePersistence";
 import {
   Upload,
   FileSpreadsheet,
@@ -216,6 +217,8 @@ const SectionCard = ({
 );
 
 // ── MAIN COMPONENT ─────────────────────────────────────
+const MODULO_ESTOQUE = "estoque";
+
 export default function ControleEstoque() {
   // ── State ──
   const [periodoInicio, setPeriodoInicio] = useState("2026-01-01");
@@ -250,6 +253,33 @@ export default function ControleEstoque() {
     { name: string; status: string; ok: boolean }[]
   >([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Chave do período atual
+  const periodKey = useMemo(() => periodoInicio.slice(0, 7), [periodoInicio]);
+
+  // Carrega dados do Supabase ao trocar de mês
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const saved = await loadModuleData<{
+        bicos: BicoData[];
+        perdasSobras: PerdasSobrasLMC[];
+        pedidos: Pedido[];
+        precios: Record<string, number>;
+        afericoes: Afericoes;
+      }>(MODULO_ESTOQUE, periodKey);
+      if (cancelled || !saved) return;
+      if (saved.bicos) setBicos(saved.bicos);
+      if (saved.perdasSobras) setPerdasSobras(saved.perdasSobras);
+      if (saved.pedidos) setPedidos(saved.pedidos);
+      if (saved.precios) setPrecios(saved.precios);
+      if (saved.afericoes) setAfericoes(saved.afericoes);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [periodKey]);
 
   // ── Month selector data ──
   const months = [
@@ -314,6 +344,27 @@ export default function ControleEstoque() {
 
   const tipoOrder = ["ETANOL", "GASOLINA", "S500", "S10", "ARLA"];
 
+  // ── Salvar no Supabase ──
+  const handleSaveSupabase = useCallback(async () => {
+    setIsSaving(true);
+    setSaveMsg(null);
+    try {
+      await saveModuleData(MODULO_ESTOQUE, periodKey, {
+        bicos,
+        perdasSobras,
+        pedidos,
+        precios,
+        afericoes,
+      });
+      setSaveMsg("Dados salvos!");
+    } catch {
+      setSaveMsg("Erro ao salvar.");
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveMsg(null), 3000);
+    }
+  }, [periodKey, bicos, perdasSobras, pedidos, precios, afericoes]);
+
   // ── CSV Import ──
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,8 +374,11 @@ export default function ControleEstoque() {
       files.forEach((file) => {
         const fn = file.name.toLowerCase();
         const reader = new FileReader();
-        reader.onload = (ev) => {
+        reader.onload = async (ev) => {
           const text = ev.target?.result as string;
+          // Faz upload do arquivo bruto para Supabase Storage
+          const storagePath = `estoque/${periodKey}/${Date.now()}_${file.name}`;
+          uploadFile("fuelops-uploads", storagePath, file).catch(() => {});
           if (fn.includes("bico")) {
             // Parse Vendas por Bico
             const rows = parseCsvRows(text);
@@ -539,6 +593,20 @@ export default function ControleEstoque() {
             <Upload size={13} strokeWidth={2} />
             Importar CSVs
           </button>
+          {/* Salvar no Supabase */}
+          <button
+            onClick={handleSaveSupabase}
+            disabled={isSaving}
+            className="flex items-center gap-2 bg-[#00a572] hover:bg-[#009060] disabled:opacity-50 text-white text-[11px] font-bold px-4 py-2 rounded-md transition-colors tracking-wide"
+          >
+            <Save size={13} strokeWidth={2} />
+            {isSaving ? "Salvando..." : "Salvar"}
+          </button>
+          {saveMsg && (
+            <span className={`text-[10px] font-['JetBrains_Mono',monospace] ${saveMsg.includes("salvo") ? "text-[#4edea3]" : "text-red-400"}`}>
+              {saveMsg}
+            </span>
+          )}
         </div>
       </div>
 
