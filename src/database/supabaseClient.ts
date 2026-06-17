@@ -1,25 +1,20 @@
 /**
  * FuelOps Pro — Inicialização do Cliente Supabase
  *
- * INSTRUÇÕES:
- *   1. Crie um arquivo .env na raiz do projeto com:
- *        VITE_SUPABASE_URL=https://seu-projeto.supabase.co
- *        VITE_SUPABASE_ANON_KEY=sua-chave-anon-aqui
- *
- *   2. Obtenha as credenciais em:
- *        Supabase Dashboard → Settings → API → Project URL / anon public
- *
- *   3. NUNCA commite o arquivo .env no repositório.
+ * As credenciais abaixo são os valores padrão do projeto.
+ * Para sobrescrever, configure as variáveis de ambiente no Vercel:
+ *   VITE_SUPABASE_URL
+ *   VITE_SUPABASE_ANON_KEY
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Credenciais do projeto FuelOps Pro (erp-posto 1.4)
+const SUPABASE_URL_DEFAULT = 'https://qmafdxxwmusdmqoajide.supabase.co';
+const SUPABASE_KEY_DEFAULT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtYWZkeHh3bXVzZG1xb2FqaWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDgwNTEsImV4cCI6MjA5NzI4NDA1MX0.hYEENRIPJzVpTqLa6K65sIqJ1rsmWciYe-rxnjmqckc';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('As variáveis de ambiente do Supabase estão ausentes. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env');
-}
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || SUPABASE_URL_DEFAULT;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || SUPABASE_KEY_DEFAULT;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
